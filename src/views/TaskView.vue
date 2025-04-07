@@ -3,15 +3,13 @@
 // and TaskList to display and manage them.
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import type { Task } from '@/types';
 import TaskList from '@/components/TaskList.vue';
 import TaskForm from '@/components/TaskForm.vue';
 
-const tasks = ref<Task[]>([
-  { id: 1, title: 'Vue.js 3 Learning', completed: false },
-  { id: 2, title: 'GraphQL Learning', completed: true },
-]);
+const LOCAL_STORAGE_KEY = 'taskList';
+const tasks = ref<Task[]>([]);
 
 const addTask = (task: Task) => {
   tasks.value.push({
@@ -26,13 +24,28 @@ const updateTask = (updatedTask: Task) => {
     tasks.value[index] = updatedTask;
   }
 };
+
+const deleteTask = (taskId: number) => {
+  tasks.value = tasks.value.filter((task) => task.id !== taskId);
+};
+
+onMounted(() => {
+  const savedTasks = localStorage.getItem(LOCAL_STORAGE_KEY);
+  if (savedTasks) {
+    tasks.value = JSON.parse(savedTasks);
+  }
+});
+
+watch(tasks, (newTasks) => {
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newTasks));
+}, { deep: true });
 </script>
 
 <template>
   <div class="container">
     <h1>Task list for OpenLog</h1>
     <TaskForm @add-task="addTask" />
-    <TaskList :tasks="tasks" @update-task="updateTask" />
+    <TaskList :tasks="tasks" @update-task="updateTask" @delete-task="deleteTask" />
   </div>
 </template>
 
