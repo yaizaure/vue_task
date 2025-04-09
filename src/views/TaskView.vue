@@ -11,11 +11,30 @@ import TaskForm from '@/components/TaskForm.vue';
 const LOCAL_STORAGE_KEY = 'taskList';
 const tasks = ref<Task[]>([]);
 
-const addTask = (task: Task) => {
-  tasks.value.push({
-    id: tasks.value.length + 1,
-    ...task,
+const addTask = async (task: Task) => {
+  const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(task),
   });
+
+  if (response.ok) {
+    const createdTask = await response.json();
+    const uniqueId = tasks.value.length > 0 
+      ? Math.max(...tasks.value.map((t) => t.id ?? 0)) + 1 
+      : 1;
+
+    const newTask = {
+      id: uniqueId,
+      ...task,
+    };
+
+    tasks.value.push(newTask);
+    console.log('added task', { ...createdTask, id: uniqueId });
+
+  } else {
+    console.error('failed to add task');
+  }
 };
 
 const updateTask = (updatedTask: Task) => {
@@ -25,14 +44,42 @@ const updateTask = (updatedTask: Task) => {
   }
 };
 
-const deleteTask = (taskId: number) => {
-  tasks.value = tasks.value.filter((task) => task.id !== taskId);
+const deleteTask = async (taskId: number) => {
+  const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${taskId}`, {
+    method: 'DELETE',
+  });
+
+  if (response.ok) {
+    tasks.value = tasks.value.filter((task) => task.id !== taskId);
+    console.log('deleted task', taskId);
+
+  } else {
+    console.error('failed to delete task');
+  }
 };
 
 onMounted(() => {
   const savedTasks = localStorage.getItem(LOCAL_STORAGE_KEY);
   if (savedTasks) {
     tasks.value = JSON.parse(savedTasks);
+
+  } else {
+    fetch('https://jsonplaceholder.typicode.com/posts')
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          console.error('failed to fetch tasks');
+          return [];
+        }
+      })
+
+      .then((data) => {
+        tasks.value = data.map((task: Task, index: number) => ({
+          ...task,
+          id: task.id || index + 1,
+        }));
+      });
   }
 });
 
